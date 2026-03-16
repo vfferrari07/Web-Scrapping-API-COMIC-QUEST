@@ -5,6 +5,11 @@ from bs4 import BeautifulSoup
 
 app = FastAPI()
 
+# Rota raiz
+@app.get("/")
+def root():
+    return {"message": "API de Web Scraping Estante Virtual. Use /produtos para buscar livros."}
+
 # Função de scraping adaptada
 
 def buscar_produtos_estantevirtual():
