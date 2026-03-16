@@ -1,37 +1,36 @@
 from fastapi import FastAPI
 from typing import List
-import requests
-from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+import time
 
 app = FastAPI()
 
-# Rota raiz
-@app.get("/")
-def root():
-    return {"message": "API de Web Scraping Estante Virtual. Use /produtos para buscar livros."}
-
-# Função de scraping adaptada
-
 def buscar_produtos_estantevirtual():
     url = 'https://www.estantevirtual.com.br/'
-    seletor_div = 'div.card-product'
-    seletor_titulo = 'h2.card-product-title'
-    seletor_link = 'a.card-product-link'
-    try:
-        response = requests.get(url, timeout=10)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, 'html.parser')
-        produtos = []
-        for produto in soup.select(seletor_div):
-            titulo_tag = produto.select_one(seletor_titulo)
-            link_tag = produto.select_one(seletor_link)
-            titulo = titulo_tag.get_text(strip=True) if titulo_tag else 'Sem título'
-            link = link_tag['href'] if link_tag and link_tag.has_attr('href') else None
-            produtos.append({'titulo': titulo, 'link': link})
-        return produtos
-    except Exception as e:
-        return []
+    chrome_options = Options()
+    chrome_options.add_argument('--headless')
+    chrome_options.add_argument('--disable-gpu')
+    chrome_options.add_argument('--no-sandbox')
+    driver = webdriver.Chrome(options=chrome_options)
+    driver.get(url)
+    time.sleep(3)  # Aguarda carregamento
+    produtos = []
+    cards = driver.find_elements(By.CSS_SELECTOR, 'div.card-product')
+    for card in cards:
+        titulo_elem = card.find_element(By.CSS_SELECTOR, 'h2.card-product-title')
+        link_elem = card.find_element(By.CSS_SELECTOR, 'a.card-product-link')
+        titulo = titulo_elem.text if titulo_elem else 'Sem título'
+        link = link_elem.get_attribute('href') if link_elem else None
+        produtos.append({'titulo': titulo, 'link': link})
+    driver.quit()
+    return produtos
 
 @app.get('/produtos', response_model=List[dict])
 def get_produtos():
     return buscar_produtos_estantevirtual()
+
+@app.get("/")
+def root():
+    return {"message": "API de Web Scraping Estante Virtual (Selenium). Use /produtos para buscar livros."}
